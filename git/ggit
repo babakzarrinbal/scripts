@@ -1,0 +1,137 @@
+#!/bin/bash
+function select_option {
+
+    # little helpers for terminal print control and key input
+    ESC=$(printf "\033")
+    cursor_blink_on() { printf "$ESC[?25h"; }
+    cursor_blink_off() { printf "$ESC[?25l"; }
+    cursor_to() { printf "$ESC[$1;${2:-1}H"; }
+    print_option() { printf "   $1 "; }
+    print_selected() { printf "  $ESC[7m $1 $ESC[27m"; }
+    get_cursor_row() {
+        IFS=';' read -sdR -p $'\E[6n' ROW COL
+        echo ${ROW#*[}
+    }
+    key_input() {
+        escape_char=$(printf "\u1b")
+        read -rsn1 mode # get 1 character
+        if [[ $mode == $escape_char ]]; then
+            read -rsn2 -t0.01 mode # read 2 more chars
+            case $mode in
+            '[A') echo up ;;
+            '[B') echo down ;;
+            '[3') echo del ;;
+            $'\0\0') echo esc ;;
+            $'') echo enter ;;
+            *) echo rest ;;
+            esac
+        elif [[ $mode == '' ]]; then
+            echo enter
+        fi
+        return
+    }
+
+    # initially print empty new lines (scroll down if at bottom of screen)
+    for opt; do printf "\n"; done
+
+    # determine current screen position for overwriting the options
+    local lastrow=$(get_cursor_row)
+    local startrow=$(($lastrow - $#))
+
+    # ensure cursor and input echoing back on upon a ctrl+c during read -s
+    trap "cursor_blink_on; stty echo; printf '\n'; exit" 2
+    cursor_blink_off
+
+    local selected=0
+    while true; do
+        # print options by overwriting the last lines
+        local idx=0
+        for opt; do
+            cursor_to $(($startrow + $idx))
+            if [ $idx -eq $selected ]; then
+                print_selected "$opt"
+            else
+                print_option "$opt"
+            fi
+            ((idx++))
+        done
+
+        # user key control
+        case $(key_input) in
+        up)
+            ((selected--))
+            if [ $selected -lt 0 ]; then selected=$(($# - 1)); fi
+            ;;
+        down)
+            ((selected++))
+            if [ $selected -ge $# ]; then selected=0; fi
+            ;;
+        esc)
+            selectedItem="0 0"
+            break
+            ;;
+        enter)
+            selectedItem="$selected 1"
+            break
+            ;;
+        del)
+            selectedItem="$selected 2"
+            break
+            ;;
+        esac
+    done
+
+    # cursor position back to normal
+    cursor_to $lastrow
+    cursor_blink_on
+    # echo $selected
+    return ${selected}
+}
+
+selectedItem="0 0"
+
+repeatable=true
+while "$repeatable"; do
+    echo ""
+    branches=($(git branch | cut -c 3-))
+    select_option "${branches[@]}"
+    choice=($selectedItem)
+    case "${choice[1]}" in
+    0) exit ;;
+    1)
+        git checkout ${branches[$choice]}
+        exit
+        ;;
+    2) git branch -D ${branches[$choice]} ;;
+    esac
+    # if [ choice[1] == 0 ]; then exit; fi;
+
+    # echo "___"
+    # echo "${choice[0]} and ${choice[1]}"
+    # arrIN=(${choice//|/ })
+    # echo ${arrIN[0]}
+    # echo ${arrIN[1]}
+    # echo ${arrIN[2]}
+    # echo ${arrIN[0]}
+    # if [ $# -eq 0 ]; then
+    #     echo "swich to branch :"
+    # elif (("$1" == "d")); then
+    #     echo "delete branch :"
+    # fi
+
+    # branches=($(git branch | cut -c 3-))
+    # select_option "${branches[@]}"
+    # choice=$?
+    # if [ $# -eq 0 ]; then
+    #     repeatable=false
+    #     git checkout ${branches[$choice]}
+    # elif [ "$1" == "d" ]; then
+    #     echo "deleting ${branches[$choice]}"
+    #     git checkout master
+    #     git branch -D ${branches[$choice]}
+
+    # fi
+done
+
+# echo "Choosen index = $choice"
+# echo "

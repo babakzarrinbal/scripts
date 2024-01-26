@@ -1,0 +1,2 @@
+in vscode 
+swip three finger to right or left to go forward or backward in code
