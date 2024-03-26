@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Check if a package name was provided
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <package>"
+  exit 1
+fi
+
+# Assign the first argument to a variable
+package=$1
+
+# Install the package and append its version to requirements.txt
+pip install "$package" && pip freeze | grep -i "^$package==" >>requirements.txt
+
+echo "$package has been installed and added to requirements.txt"

@@ -1,0 +1,10 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\.js]
+@="JavaScript File"
+
+[HKEY_CLASSES_ROOT\.js\ShellNew]
+"NullFile"=""
+
+[HKEY_CLASSES_ROOT\JavaScript File]
+@="JavaScript File"
