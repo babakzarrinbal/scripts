@@ -1,0 +1,1 @@
+for run with node and python copy "../icons" to "c:\icons"

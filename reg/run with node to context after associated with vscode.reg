@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\VSCode.js\shell\Open with Git Bash Node]
+@="Run with Node (Git Bash)"
+"Icon"="C:\\icons\\nodejs.ico"
+
+[HKEY_CLASSES_ROOT\VSCode.js\shell\Open with Git Bash Node\command]
+@="\"C:\\Program Files\\Git\\git-bash.exe\" -c \"DIR=\\\"$(dirname '%1')\\\"; if [ -f \\\"$DIR/package.json\\\" ] && [ -f \\\"$DIR/package-lock.json\\\" ]; then npm ci; elif [ -f \\\"$DIR/package.json\\\" ]; then npm i; fi; node '%1'; echo; echo Press any key to continue; read -n 1\""

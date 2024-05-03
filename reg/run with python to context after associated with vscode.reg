@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\VSCode.py\shell\run with python]
+@="Run with Python (Git Bash)"
+"Icon"="C:\\icons\\python.ico"
+
+[HKEY_CLASSES_ROOT\VSCode.py\shell\run with python\command]
+@="\"C:\\Program Files\\Git\\git-bash.exe\" -c 'cd \"$(dirname \"%1\")\"; if [ -f \"pyproject.toml\" ]; then poetry update && poetry run python \"%1\"; elif [ -f \"requirements.txt\" ]; then if [ ! -d \".venv\" ]; then python -m venv .venv; fi; source ./.venv/Scripts/activate && pip install -r requirements.txt && python \"%1\"; else python \"%1\"; fi; echo; echo Press any key to continue; read -n 1'"

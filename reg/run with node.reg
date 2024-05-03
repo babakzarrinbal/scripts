@@ -1,8 +1,0 @@
-Windows Registry Editor Version 5.00
-
-[HKEY_CLASSES_ROOT\*\shell\Open with Git Bash Node]
-@="Run with Node (Git Bash)"
-"Icon"="\"C:\\Program Files\\Git\\git-bash.exe\""
-
-[HKEY_CLASSES_ROOT\*\shell\Open with Git Bash Node\command]
-@="\"C:\\Program Files\\Git\\git-bash.exe\" -c \"node '%1'; echo; echo Press any key to continue; read -n 1\""
