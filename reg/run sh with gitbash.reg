@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\VSCode.sh\shell\Open with Git Bash]
+@="Run with Git Bash"
+"Icon"="C:\\icons\\sh.ico"
+
+[HKEY_CLASSES_ROOT\VSCode.sh\shell\Open with Git Bash\command]
+@="\"C:\\Program Files\\Git\\git-bash.exe\" -c \"cd \\\"$(dirname '%1')\\\"; './$(basename '%1')'; read -p 'Press any key to continue...'\""

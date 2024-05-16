@@ -1,25 +1,31 @@
 #!/bin/bash
-function select_option {
 
-    # little helpers for terminal print control and key input
+function select_option {
+    # Little helpers for terminal print control and key input
     ESC=$(printf "\033")
     cursor_blink_on() { printf "$ESC[?25h"; }
     cursor_blink_off() { printf "$ESC[?25l"; }
     cursor_to() { printf "$ESC[$1;${2:-1}H"; }
     print_option() { printf "   $1 "; }
     print_selected() { printf "  $ESC[7m $1 $ESC[27m"; }
+    print_current() { printf "  $ESC[32m$1$ESC[0m "; }
+    print_current_selected() { printf "  $ESC[7;32m $1 $ESC[27;39m"; }
+    print_remote() { printf "  $ESC[90m$1$ESC[0m "; }
+    print_remote_selected() { printf "  $ESC[7;90m $1 $ESC[27;39m"; }
     get_cursor_row() {
         IFS=';' read -sdR -p $'\E[6n' ROW COL
         echo ${ROW#*[}
     }
     key_input() {
         escape_char=$(printf "\u1b")
-        read -rsn1 mode # get 1 character
+        read -rsn1 mode # Get 1 character
         if [[ $mode == $escape_char ]]; then
-            read -rsn2 -t0.01 mode # read 2 more chars
+            read -rsn2 -t0.01 mode # Read 2 more chars
             case $mode in
             '[A') echo up ;;
             '[B') echo down ;;
+            '[C') echo right ;;
+            '[D') echo left ;;
             '[3') echo del ;;
             $'\0\0') echo esc ;;
             $'') echo enter ;;
@@ -31,32 +37,42 @@ function select_option {
         return
     }
 
-    # initially print empty new lines (scroll down if at bottom of screen)
+    # Initially print empty new lines (scroll down if at bottom of screen)
     for opt; do printf "\n"; done
 
-    # determine current screen position for overwriting the options
+    # Determine current screen position for overwriting the options
     local lastrow=$(get_cursor_row)
     local startrow=$(($lastrow - $#))
 
-    # ensure cursor and input echoing back on upon a ctrl+c during read -s
+    # Ensure cursor and input echoing back on upon a ctrl+c during read -s
     trap "cursor_blink_on; stty echo; printf '\n'; exit" 2
     cursor_blink_off
 
     local selected=0
     while true; do
-        # print options by overwriting the last lines
+        # Print options by overwriting the last lines
         local idx=0
         for opt; do
             cursor_to $(($startrow + $idx))
             if [ $idx -eq $selected ]; then
-                print_selected "$opt"
+                if [ "$opt" == "$current_branch" ]; then
+                    print_current_selected "$opt"
+                elif [[ "$opt" == remotes/* ]]; then
+                    print_remote_selected "$opt"
+                else
+                    print_selected "$opt"
+                fi
+            elif [ "$opt" == "$current_branch" ]; then
+                print_current "$opt"
+            elif [[ "$opt" == remotes/* ]]; then
+                print_remote "$opt"
             else
                 print_option "$opt"
             fi
             ((idx++))
         done
 
-        # user key control
+        # User key control
         case $(key_input) in
         up)
             ((selected--))
@@ -81,57 +97,119 @@ function select_option {
         esac
     done
 
-    # cursor position back to normal
+    # Cursor position back to normal
     cursor_to $lastrow
     cursor_blink_on
-    # echo $selected
     return ${selected}
 }
 
+function confirm {
+    local prompt="$1"
+    local options=("Yes" "No")
+    local selected=0
+
+    while true; do
+        clear
+        echo "$prompt"
+        for ((i = 0; i < ${#options[@]}; i++)); do
+            if [ $i -eq $selected ]; then
+                printf " [$ESC[7m${options[$i]}$ESC[27m] "
+            else
+                printf " [${options[$i]}] "
+            fi
+        done
+        echo ""
+
+        case $(key_input) in
+        left)
+            ((selected--))
+            if [ $selected -lt 0 ]; then selected=$((${#options[@]} - 1)); fi
+            ;;
+        right)
+            ((selected++))
+            if [ $selected -ge ${#options[@]}; then selected=0; fi
+            ;;
+        enter)
+            return $selected
+            ;;
+        esac
+    done
+}
+
 selectedItem="0 0"
+show_all=false
+
+if [ "$1" == "-a" ]; then
+    show_all=true
+fi
 
 repeatable=true
 while "$repeatable"; do
     echo ""
-    branches=($(git branch | cut -c 3-))
+    if "$show_all"; then
+        local_branches=($(git branch | cut -c 3-))
+        remote_branches=($(git branch -r | grep -v '\->' | grep -v "HEAD"))
+        branches=("${local_branches[@]}")
+        for remote_branch in "${remote_branches[@]}"; do
+            branch_name=${remote_branch#origin/}
+            if [[ ! " ${local_branches[@]} " =~ " ${branch_name} " ]]; then
+                branches+=("remotes/$remote_branch")
+            fi
+        done
+    else
+        branches=($(git branch | cut -c 3-))
+    fi
+    current_branch=$(git branch --show-current)
     select_option "${branches[@]}"
     choice=($selectedItem)
     case "${choice[1]}" in
     0) exit ;;
     1)
-        git checkout ${branches[$choice]}
+        branch=${branches[$choice]}
+        if [[ "$branch" == remotes/* ]]; then
+            remote_branch=${branch#remotes/}
+            git checkout -b ${remote_branch#*/} $branch && git pull
+        else
+            git checkout $branch && git pull
+        fi
         exit
         ;;
-    2) git branch -D ${branches[$choice]} ;;
+    2)
+        branch=${branches[$choice]}
+        if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+            echo "Cannot delete the $branch branch."
+            continue
+        fi
+        confirm "Do you want to delete this branch locally?"
+        if [ $? -eq 0 ]; then
+            if [ "$branch" == "$current_branch" ]; then
+                if git branch --list main >/dev/null; then
+                    git checkout main && git pull
+                elif git branch --list master >/dev/null; then
+                    git checkout master && git pull
+                else
+                    echo "No main or master branch to switch to. Aborting deletion."
+                    continue
+                fi
+            fi
+            git branch -D $branch
+        else
+            confirm "Do you want to delete this branch remotely as well?"
+            if [ $? -eq 0 ]; then
+                if [ "$branch" == "$current_branch" ]; then
+                    if git branch --list main >/dev/null; then
+                        git checkout main && git pull
+                    elif git branch --list master >/dev/null; then
+                        git checkout master && git pull
+                    else
+                        echo "No main or master branch to switch to. Aborting deletion."
+                        continue
+                    fi
+                fi
+                git push origin --delete ${branch#remotes/origin/}
+                git branch -D $branch
+            fi
+        fi
+        ;;
     esac
-    # if [ choice[1] == 0 ]; then exit; fi;
-
-    # echo "___"
-    # echo "${choice[0]} and ${choice[1]}"
-    # arrIN=(${choice//|/ })
-    # echo ${arrIN[0]}
-    # echo ${arrIN[1]}
-    # echo ${arrIN[2]}
-    # echo ${arrIN[0]}
-    # if [ $# -eq 0 ]; then
-    #     echo "swich to branch :"
-    # elif (("$1" == "d")); then
-    #     echo "delete branch :"
-    # fi
-
-    # branches=($(git branch | cut -c 3-))
-    # select_option "${branches[@]}"
-    # choice=$?
-    # if [ $# -eq 0 ]; then
-    #     repeatable=false
-    #     git checkout ${branches[$choice]}
-    # elif [ "$1" == "d" ]; then
-    #     echo "deleting ${branches[$choice]}"
-    #     git checkout master
-    #     git branch -D ${branches[$choice]}
-
-    # fi
 done
-
-# echo "Choosen index = $choice"
-# echo "

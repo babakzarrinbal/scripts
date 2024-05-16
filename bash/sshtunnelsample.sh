@@ -1,0 +1,1 @@
+ssh -g -L *:27017:localhost:27017  -i "~/.ssh/id_rsa" ubuntu@3.79.65.196
