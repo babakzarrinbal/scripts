@@ -1,0 +1,25 @@
+#!/bin/bash
+
+while getopts "t:" opt; do
+  case $opt in
+    t) interval=$OPTARG ;;
+    \?) echo "Invalid option -$OPTARG" >&2; exit 1 ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+command_string=$1
+interval=${interval:-5}
+
+while true; do
+  echo -ne "running the command ...                  \r"
+  result=$(eval "$command_string")
+  clear
+  echo "$result"
+  echo ""
+  for ((i=$interval; i>0; i--)); do
+    echo -ne "Next execution in $i seconds...\r"
+    sleep 1
+  done
+
+done
