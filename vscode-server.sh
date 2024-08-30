@@ -49,7 +49,7 @@ cat << EOF > ~/.local/share/code-server/User/settings.json
 EOF
 
 # Start code-server, apply settings, and restart to ensure settings take effect
-code-server /app --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry &
+PORT=8080 code-server /app --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry &
 sleep 5
 kill $(pgrep -f "code-server")
-code-server /app --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry
+PORT=8080 code-server /app --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry
