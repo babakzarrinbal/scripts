@@ -15,8 +15,11 @@ TAG_PATTERN='^v([0-9]+)\.([0-9]+)\.([0-9]+)$'
 # Get the latest tag by version that matches the pattern
 # Get the latest tag by version that matches the pattern on the current branch
 CURRENT_TAG=$(git log --tags --simplify-by-decoration --pretty="format:%D" | grep -E "$TAG_PATTERN" | sort -V | tail -n 1)
+echo "CURRENT_TAG: $CURRENT_TAG"
 
-
+# Get the latest tag by version that matches the pattern
+CURRENT_TAG=$(git tag --list | grep -E "$TAG_PATTERN" | sort -V | tail -n 1)
+echo "CURRENT_TAG: $CURRENT_TAG"
 # Get the latest commit hash
 LATEST_COMMIT=$(git rev-parse HEAD)
 
