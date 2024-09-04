@@ -13,6 +13,7 @@ build_dirs=$(find "$git_root" -name "Dockerfile" -exec dirname {} \;)
 
 # Get the list of files changed in the current commit
 changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+echo "changed_files: $changed_files"
 selected_build_dirs=""
 # Iterate over each build directory
 for build_dir in $build_dirs; do
