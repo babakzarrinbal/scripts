@@ -20,12 +20,13 @@ for build_dir in $build_dirs; do
     # Get the name of the build directory
     if [ -f "$build_dir/.dockerbuild" ]; then
       build_dir_name=$(basename "$build_dir")
-      echo "Found .dockerbuild file, checking for relevant changes to .dockerbuild"
+      echo "Found .dockerbuild file, checking for relevant changes"
       # Read the patterns from the .dockerbuild file
       patterns=$(grep -v '^#' "$build_dir/.dockerbuild" | grep -v '^$')
       # Adjust the paths to be relative to the build directory
       relative_files=$(echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||")
-
+      echo echo "$changed_files" | grep "^$build_dir_name/" 
+      
       if [ -z "$relative_files" ]; then
           echo "No relevant changes in $build_dir_name"
           continue
