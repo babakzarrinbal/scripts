@@ -23,7 +23,7 @@ for build_dir in $build_dirs; do
     # Get the name of the build directory
     if [ -f "$build_dir/.dockerbuild" ]; then
       build_dir_name=$(basename "$build_dir")
-
+      echo "Checking $build_dir_name"
       # Read the patterns from the .dockerbuild file
       patterns=$(grep -v '^#' "$build_dir/.dockerbuild" | grep -v '^$')
 
@@ -57,8 +57,3 @@ export BUILD_DIRS=$selected_build_dirs
 echo "===================================="
 echo "--- End of finding build folders ---"
 echo "===================================="
-# for selected_build_dir in $selected_build_dirs; do
-#   echo $selected_build_dir
-# done
-# echo "No matching files found."
-# exit 1
