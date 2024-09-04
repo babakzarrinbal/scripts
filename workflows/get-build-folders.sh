@@ -29,7 +29,11 @@ for build_dir in $build_dirs; do
       echo "Patterns: $patterns"
       # Adjust the paths to be relative to the build directory
       relative_files=$(echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||")
-      echo "Relative files: $relative_files"
+
+      if [ -z "$relative_files" ]; then
+          echo "No relevant changes in $build_dir_name"
+          continue
+      fi
       # Check if any changed files match the patterns
       for pattern in $patterns; do
           matched_files=$(echo "$relative_files" | grep -E "$pattern")
