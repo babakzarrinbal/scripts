@@ -37,7 +37,7 @@ for build_dir in $build_dirs; do
       # Check if any changed files match the patterns
       for pattern in $patterns; do
           echo "Checking pattern: $pattern"
-          matched_files=$(echo "$relative_files" | grep -E "$pattern")
+          matched_files=$(echo "$relative_files" | grep -E "$pattern" || true)
           if  [ -n "$matched_files" ]; then
               echo "Matched pattern in $build_dir:"
               echo "file: $matched_files"
