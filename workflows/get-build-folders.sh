@@ -26,9 +26,10 @@ for build_dir in $build_dirs; do
       echo "Checking $build_dir_name"
       # Read the patterns from the .dockerbuild file
       patterns=$(grep -v '^#' "$build_dir/.dockerbuild" | grep -v '^$')
-
+      echo "Patterns: $patterns"
       # Adjust the paths to be relative to the build directory
       relative_files=$(echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||")
+      echo "Relative files: $relative_files"
       # Check if any changed files match the patterns
       for pattern in $patterns; do
           matched_files=$(echo "$relative_files" | grep -E "$pattern")
