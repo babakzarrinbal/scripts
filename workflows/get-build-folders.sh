@@ -38,7 +38,7 @@ for build_dir in $build_dirs; do
           echo "No relevant changes in $build_dir"
           continue
       else
-          echo "relevant files: $relative_files"
+          echo "found relevant files in folder $build_dir"
       fi
 
       # Check if any changed files match the patterns
