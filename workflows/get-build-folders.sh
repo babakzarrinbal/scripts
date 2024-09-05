@@ -23,9 +23,9 @@ for build_dir in $build_dirs; do
         echo "Checking project root for build"
     else
         build_dir_name=$(basename "$build_dir")
-        echo "Checking $build_dir_name for build"
     fi
-
+    build_dir_name=$([ "$build_dir" = "$git_root" ] && echo "" || basename "$build_dir")
+    echo "Checking $build_dir for build"
     # Get the name of the build directory
     if [ -f "$build_dir/.dockerbuild" ]; then
       echo "Found .dockerbuild file, checking for relevant changes"
@@ -35,7 +35,7 @@ for build_dir in $build_dirs; do
 
       relative_files=$( [ -z "$build_dir_name" ] && echo "$changed_files" || echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||" )
       if [ -z "$relative_files" ]; then
-          echo "No relevant changes in $build_dir_name"
+          echo "No relevant changes in $build_dir"
           continue
       else
           echo "relevant files: $relative_files"
