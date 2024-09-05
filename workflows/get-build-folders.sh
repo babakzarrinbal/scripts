@@ -17,11 +17,15 @@ changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
 selected_build_dirs=""
 # Iterate over each build directory
 for build_dir in $build_dirs; do
-    build_dir_name=$(basename "$build_dir")
-    echo "build_dir: $build_dir"
-    echo "git_root: $git_root"
 
-    echo "Checking $build_dir_name for build"
+    if [ "$build_dir" = "$git_root" ]; then
+        build_dir_name=""
+        echo "Checking project root for build"
+    else
+        build_dir_name=$(basename "$build_dir")
+        echo "Checking $build_dir_name for build"
+    fi
+
     # Get the name of the build directory
     if [ -f "$build_dir/.dockerbuild" ]; then
       echo "Found .dockerbuild file, checking for relevant changes"
