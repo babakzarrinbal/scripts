@@ -50,13 +50,13 @@ for build_dir in $build_dirs; do
               echo "file: $matched_files"
               echo "pattern: $pattern"
               echo "---"
-              selected_build_dirs+="$build_dir"$'\n'
+              selected_build_dirs+=$([ "$build_dir" = "$git_root" ] && echo "."$'\n' || echo "$build_dir"$'\n')
               break
           fi
       done
     else
       echo "No .dockerbuild file in $build_dir, adding to build list"
-      selected_build_dirs+="$build_dir\n"
+      selected_build_dirs+=$([ "$build_dir" = "$git_root" ] && echo "."$'\n' || echo "$build_dir"$'\n') 
       echo "---"
     fi
 done
