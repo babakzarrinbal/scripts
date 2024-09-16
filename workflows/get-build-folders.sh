@@ -66,6 +66,7 @@ for selected_build_dir in $selected_build_dirs; do
 done
 
 export BUILD_DIRS=$selected_build_dirs
+export ALL_BUILD_DIRS=$build_dirs
 
 echo "===================================="
 echo "--- End of finding build folders ---"
