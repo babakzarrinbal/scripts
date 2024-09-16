@@ -60,6 +60,11 @@ for build_dir in $build_dirs; do
       echo "---"
     fi
 done
+echo "ALL Build dirs[exported into ALL_BUILD_DIRS]:"
+for selected_build_dir in $build_dirs; do
+  echo "$selected_build_dir"
+done
+
 echo "Build dirs[exported into BUILD_DIRS]:"
 for selected_build_dir in $selected_build_dirs; do
   echo "$selected_build_dir"
