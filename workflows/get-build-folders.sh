@@ -62,7 +62,7 @@ for build_dir in $build_dirs; do
 done
 echo "ALL Build dirs[exported into ALL_BUILD_DIRS]:"
 
-$build_dirs = $([ "$build_dirs" = "$git_root" ] && echo "." || echo "$build_dirs") 
+build_dirs=$( [ "$build_dirs" = "$git_root" ] && echo "." || echo "$build_dirs" )
 for selected_build_dir in $build_dirs; do
   echo "$selected_build_dir"
 done
