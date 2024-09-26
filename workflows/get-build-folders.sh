@@ -8,24 +8,27 @@ echo "============================="
 
 git_root=$(git rev-parse --show-toplevel)
 
+echo "---------------------------------"
+echo "Project root: $git_root"
+echo "---------------------------------"
 # Find all directories containing a .dockerbuild file
 build_dirs=$(find "$git_root" -name "Dockerfile" -exec dirname {} \;)
 
 # Get the list of files changed in the current commit
 changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
-
+echo "---------------------------------"
+echo "Changed files: $changed_files"
+echo "---------------------------------"
 selected_build_dirs=""
 # Iterate over each build directory
 for build_dir in $build_dirs; do
 
-    if [ "$build_dir" = "$git_root" ]; then
-        build_dir_name=""
-        echo "Checking project root for build"
+    build_dir_name=$([ "$build_dir" = "$git_root" ] && echo "." || basename "$build_dir")
+if [ "$build_dir" = "$git_root" ]; then
+        echo "Checking project root for build: $build_dir"
     else
-        build_dir_name=$(basename "$build_dir")
+        echo "Checking sub folder $build_dir_name for build: $build_dir"
     fi
-    build_dir_name=$([ "$build_dir" = "$git_root" ] && echo "" || basename "$build_dir")
-    echo "Checking $build_dir for build"
     # Get the name of the build directory
     if [ -f "$build_dir/.dockerbuild" ]; then
       echo "Found .dockerbuild file, checking for relevant changes"
@@ -33,7 +36,10 @@ for build_dir in $build_dirs; do
       patterns=$(grep -v '^#' "$build_dir/.dockerbuild" | grep -v '^$')
       # Adjust the paths to be relative to the build directory
 
-      relative_files=$( [ -z "$build_dir_name" ] && echo "$changed_files" || echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||" )
+      relative_files=$( [ "$build_dir_name" == "." ] && echo "$changed_files" || echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||" )
+      echo "---------------------------------"
+      echo "Relative files: $relative_files"
+      echo "---------------------------------"
       if [ -z "$relative_files" ]; then
           echo "No relevant changes in $build_dir"
           continue
