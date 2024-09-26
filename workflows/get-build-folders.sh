@@ -16,9 +16,7 @@ build_dirs=$(find "$git_root" -name "Dockerfile" -exec dirname {} \;)
 
 # Get the list of files changed in the current commit
 changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
-echo "---------------------------------"
-echo "Changed files: $changed_files"
-echo "---------------------------------"
+
 selected_build_dirs=""
 # Iterate over each build directory
 for build_dir in $build_dirs; do
@@ -37,9 +35,6 @@ if [ "$build_dir" = "$git_root" ]; then
       # Adjust the paths to be relative to the build directory
 
       relative_files=$( [ "$build_dir_name" == "." ] && echo "$changed_files" || echo "$changed_files" | grep "^$build_dir_name/" | sed "s|^$build_dir_name/||" )
-      echo "---------------------------------"
-      echo "Relative files: $relative_files"
-      echo "---------------------------------"
       if [ -z "$relative_files" ]; then
           echo "No relevant changes in $build_dir"
           continue
