@@ -47,8 +47,10 @@ for build_dir in $build_dirs; do
         selected_build_dirs+=$([ "$build_dir" = "$git_root" ] && echo "."$'\n' || echo "$build_dir"$'\n')
     fi
     [ -f "$build_dir/.gitignore.bak" ] && cp "$build_dir/.gitignore.bak" "$build_dir/.gitignore" && rm "$build_dir/.gitignore.bak"
-    git add "$build_dir"
 done
+
+git reset --hard HEAD
+git clean -fd
 
 echo "============== ALL Build dirs [exported into ALL_BUILD_DIRS]: =============="
 build_dirs=$( [ "$build_dirs" = "$git_root" ] && echo "." || echo "$build_dirs" )
