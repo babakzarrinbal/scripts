@@ -21,6 +21,7 @@ for build_dir in $build_dirs; do
 
     if [ -f "$build_dir/.dockerbuild" ]; then
         cp "$build_dir/.dockerbuild" "$build_dir/.gitignore"
+        git add "$build_dir/.gitignore"
         git reset
         build_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
         [ -z "$build_files" ] && echo "No relevant changes due to .dockerbuild in $build_dir" || {
@@ -29,6 +30,7 @@ for build_dir in $build_dirs; do
         }
     elif [ -f "$build_dir/.dockerignore" ]; then
         cp "$build_dir/.dockerignore" "$build_dir/.gitignore"
+        git add "$build_dir/.gitignore"
         git reset
         ignored_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
         non_ignored_files=$( 
@@ -48,7 +50,6 @@ for build_dir in $build_dirs; do
     fi
     [ -f "$build_dir/.gitignore.bak" ] && cp "$build_dir/.gitignore.bak" "$build_dir/.gitignore" && rm "$build_dir/.gitignore.bak"
 done
-
 git reset --hard HEAD
 git clean -fd
 
