@@ -40,7 +40,12 @@ for build_dir in $build_dirs; do
         echo 1
         cp "$build_dir/.dockerignore" "$build_dir/.gitignore"
         echo 2
-        ignored_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
+        ignored_files=""
+        for file in $relative_files; do
+            if git check-ignore "$file" > /dev/null 2>&1; then
+                ignored_files+="$file"$'\n'
+            fi
+        done
         echo 3
         non_ignored_files=$( 
             if [ -n "$ignored_files" ]; then 
