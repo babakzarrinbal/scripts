@@ -9,6 +9,10 @@ echo "============================="
 git_root=$(git rev-parse --show-toplevel)
 build_dirs=$(find "$git_root" -name "Dockerfile" -exec dirname {} \;)
 changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+git rm --cached $(printf "%s\n" "$changed_files" | xargs) > /dev/null
+echo "---Changed files: ---------- "
+echo $changed_files
+echo "---------------------------- "
 selected_build_dirs=""
 
 for build_dir in $build_dirs; do
@@ -23,7 +27,6 @@ for build_dir in $build_dirs; do
     if [ -f "$build_dir/.dockerbuild" ]; then
         echo "- Found .dockerbuild "
         cp "$build_dir/.dockerbuild" "$build_dir/.gitignore"
-        git rm -r --cached . > /dev/null
         build_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
         [ -z "$build_files" ] && echo "--- No relevant changes due to .dockerbuild" || {
             echo "Relevant changed files: "
@@ -35,7 +38,6 @@ for build_dir in $build_dirs; do
     elif [ -f "$build_dir/.dockerignore" ]; then
         echo "- Found .dockerignore "
         cp "$build_dir/.dockerignore" "$build_dir/.gitignore"
-        git rm -r --cached . > /dev/null
         ignored_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
         non_ignored_files=$( 
             if [ -n "$ignored_files" ]; then 
