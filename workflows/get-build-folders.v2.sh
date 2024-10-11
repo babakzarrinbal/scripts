@@ -21,7 +21,7 @@ for build_dir in $build_dirs; do
 
     if [ -f "$build_dir/.dockerbuild" ]; then
         cp "$build_dir/.dockerbuild" "$build_dir/.gitignore"
-        git rm -r --cached .
+        git reset
         build_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
         [ -z "$build_files" ] && echo "No relevant changes due to .dockerbuild in $build_dir" || {
             echo "Found relevant files in $build_dir:"
@@ -29,7 +29,7 @@ for build_dir in $build_dirs; do
         }
     elif [ -f "$build_dir/.dockerignore" ]; then
         cp "$build_dir/.dockerignore" "$build_dir/.gitignore"
-        git rm -r --cached .
+        git reset
         ignored_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
         non_ignored_files=$( 
             if [ -n "$ignored_files" ]; then 
@@ -46,8 +46,8 @@ for build_dir in $build_dirs; do
         echo "Adding $build_dir to build list"
         selected_build_dirs+=$([ "$build_dir" = "$git_root" ] && echo "."$'\n' || echo "$build_dir"$'\n')
     fi
-    
     [ -f "$build_dir/.gitignore.bak" ] && cp "$build_dir/.gitignore.bak" "$build_dir/.gitignore" && rm "$build_dir/.gitignore.bak"
+    git add "$build_dir"
 done
 
 echo "============== ALL Build dirs [exported into ALL_BUILD_DIRS]: =============="
