@@ -37,8 +37,11 @@ for build_dir in $build_dirs; do
         }
     elif [ -f "$build_dir/.dockerignore" ]; then
         echo "- Found .dockerignore "
+        echo 1
         cp "$build_dir/.dockerignore" "$build_dir/.gitignore"
+        echo 2
         ignored_files=$(printf "%s\n" "$relative_files" | git check-ignore --stdin)
+        echo 3
         non_ignored_files=$( 
             if [ -n "$ignored_files" ]; then 
                 printf "%s\n" "$relative_files" | grep -vFf <(printf "%s\n" "$ignored_files")
