@@ -48,7 +48,7 @@ show_menu() {
                 esac
                 ;;
             '')  # Enter key
-                menu_selected="${menu_options[$selected]}"  # Update the global variable
+                menu_selected=$(echo "${menu_options[$selected]}" | tr -d '\n\r')
                 return
                 ;;
         esac
