@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Determine the current cluster name
+current_cluster=$(kubectl config view --minify --output 'jsonpath={.contexts[0].context.cluster}')
+current_cluster_name=${current_cluster##*/}  # Extract the name after the last /
+
+# Namespaces to include based on the cluster
+if [[ "$current_cluster_name" == "prod-cluster" ]]; then
+    namespaces=("prod-mailbox-pro" "prod-ai-mailbox")
+else
+    namespaces=("dev-mailbox-pro" "dev-ai-mailbox")
+fi
+
+# namespaces=("dev-mailbox-pro" "prod-mailbox-pro" "dev-ai-mailbox" "prod-ai-mailbox")
+selected_pod=0
+
+# Fetch pods from all namespaces
+declare -a pods_info
+
+calculate_age() {
+    # Calculate age in "<days>d:<hours>h:<minutes>m:<seconds>s" format
+    start_time=$(date -d "$1" +%s)
+    current_time=$(date +%s)
+    diff=$((current_time - start_time))
+
+    days=$((diff / 86400))
+    hours=$(( (diff % 86400) / 3600 ))
+    minutes=$(( (diff % 3600) / 60 ))
+    seconds=$((diff % 60))
+
+    echo "${days}d:${hours}h:${minutes}m:${seconds}s"
+}
+
+# Fetch pod data
+for ns in "${namespaces[@]}"; do
+    while IFS= read -r line; do
+        pod_name=$(echo "$line" | awk '{print $1}')
+        phase=$(echo "$line" | awk '{print $2}')
+        start_time=$(echo "$line" | awk '{print $3}')
+        age=$(calculate_age "$start_time")
+        pods_info+=("$(printf "%-40s %-20s %-15s %s" "$pod_name" "$ns" "[$phase]" "$age")")
+    done < <(kubectl get pods -n "$ns" --no-headers -o custom-columns=":metadata.name,:status.phase,:metadata.creationTimestamp")
+done
+
+# Function to display the pods menu
+display_pods_menu() {
+    clear
+    echo "Select a pod using arrow keys:"
+    printf "    %-40s %-20s %-15s %s\n" "Pod Name" "Namespace" "Status" "Age"
+    printf "    %-40s %-20s %-15s %s\n" "--------" "---------" "------" "---"
+    for i in "${!pods_info[@]}"; do
+        if [ "$i" -eq "$selected_pod" ]; then
+            echo -e " \033[1;32m-> ${pods_info[$i]}\033[0m"
+        else
+            echo "    ${pods_info[$i]}"
+        fi
+    done
+}
+
+# Pod selection
+while true; do
+    display_pods_menu
+    read -rsn1 input
+    case "$input" in
+        $'\x1b') # Detect ESC sequences
+            read -rsn2 -t 0.1 input
+            case "$input" in
+                '[A') # Up arrow
+                    selected_pod=$(( (selected_pod - 1 + ${#pods_info[@]}) % ${#pods_info[@]} ))
+                    ;;
+                '[B') # Down arrow
+                    selected_pod=$(( (selected_pod + 1) % ${#pods_info[@]} ))
+                    ;;
+            esac
+            ;;
+        '') # Enter key
+            break
+            ;;
+    esac
+done
+
+# Extract the selected pod and namespace
+selected_entry=${pods_info[$selected_pod]}
+pod=$(echo "$selected_entry" | awk '{print $1}')
+namespace=$(echo "$selected_entry" | awk '{print $2}')
+
+# Execute logs command
+port=8080; while netstat -an | grep -q ":$port .*LISTEN"; do port=$((port + 1)); done; echo "Free port found: $port"
+kubectl port-forward "$pod" -n "$namespace" --address 0.0.0.0  $port:8080 --request-timeout=0

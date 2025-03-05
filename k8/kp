@@ -1,0 +1,90 @@
+#!/bin/bash
+
+all_namespaces=$(kubectl get namespaces -o jsonpath="{.items[*].metadata.name}" | tr ' ' '\n')
+IFS=$'\n' read -rd '' -a options <<<"$all_namespaces"
+# Check if an argument is passed
+if [ $# -gt 0 ]; then
+    namespace=$1
+    # Fetch all namespaces once
+    echo  "$all_namespaces" | grep -wq "$namespace"
+    # Find the closest matching namespace
+    matches=$(echo "$all_namespaces" | grep -i "$namespace")
+    # Handle the matches
+    if [ -z "$matches" ]; then
+        echo "Error: Namespace '$namespace' does not exist, and no similar namespace found."
+        exit 1
+    fi
+    # Convert matches to an array
+    IFS=$'\n' read -rd '' -a options <<<"$matches"
+    echo "here"
+    if [ ${#options[@]} -eq 1 ]; then
+        # Only one match, use it
+        echo "Namespace set to ${options[0]}"
+        kubectl config set-context --current --namespace="${options[0]}"
+        kubectl get pod --namespace="${options[0]}"
+        exit 1
+    fi
+    
+fi
+
+# Get the current namespace
+current_namespace=$(kubectl config view --minify --output 'jsonpath={..namespace}')
+selected=0
+
+echo "${options[@]}"
+
+# Find the index of the current namespace
+for i in "${!options[@]}"; do
+    if [[ "${options[$i]}" == "$current_namespace" ]]; then
+        selected=$i
+        break
+    fi
+done
+
+# Function to display the menu
+display_menu() {
+    clear
+    echo "Select a namespace using arrow keys:"
+    for i in "${!options[@]}"; do
+        if [[ "${options[$i]}" == "$current_namespace" ]]; then
+            # Highlight current namespace in bold yellow
+            echo -e " \033[1;33m* ${options[$i]} (current)\033[0m"
+        elif [ "$i" -eq "$selected" ]; then
+            # Highlight selected namespace in bold green
+            echo -e " \033[1;32m-> ${options[$i]}\033[0m"
+        else
+            echo "    ${options[$i]}"
+        fi
+    done
+}
+
+# Handle arrow keys
+while true; do
+    display_menu
+    read -rsn1 input
+    case "$input" in
+        $'\x1b') # Detect ESC sequences
+            read -rsn2 -t 0.1 input
+            case "$input" in
+                '[A') # Up arrow
+                    selected=$(( (selected - 1 + ${#options[@]}) % ${#options[@]} ))
+                    ;;
+                '[B') # Down arrow
+                    selected=$(( (selected + 1) % ${#options[@]} ))
+                    ;;
+                '') # ESC key pressed alone (no sequence)
+                    exit 0
+                    ;;
+            esac
+            ;;
+        '') # Enter key
+            break
+            ;;
+    esac
+done
+
+namespace=${options[$selected]}
+kubectl get pod --namespace=$namespace
+kubectl config set-context --current --namespace=$namespace
+echo "Namespace set to $namespace"
+

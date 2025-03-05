@@ -1,0 +1,219 @@
+#!/bin/bash
+
+# Check if an argument is passed
+if [[ $# -gt 0 ]]; then
+    arg="$1"
+    # Use kubectl to filter pods by name
+    mapfile -t pods_info < <(kubectl get pods --all-namespaces --no-headers -o custom-columns="NAME:.metadata.name,NAMESPACE:.metadata.namespace,PHASE:.status.phase" | awk '$1 ~ /'"$arg"'/' )
+    
+    if [[ ${#pods_info[@]} -eq 0 ]]; then
+        echo "No pods found matching '$arg'."
+        exit 1
+    fi
+
+    # If only one pod matches, directly fetch logs
+    if [[ ${#pods_info[@]} -eq 1 ]]; then
+        pod=$(echo "${pods_info[0]}" | awk '{print $1}')
+        namespace=$(echo "${pods_info[0]}" | awk '{print $2}')
+        echo "Fetching logs for pod '$pod' in namespace '$namespace'..."
+        kubectl logs -f "$pod" -n "$namespace"
+        exit 0
+    fi
+
+    selected_pod=0
+
+    # Function to display matching pods menu
+    display_pods_menu() {
+        clear
+        echo "Select a pod using arrow keys:"
+        printf "    %-40s %-20s %-10s\n" "Pod Name" "Namespace" "Status"
+        printf "    %-40s %-20s %-10s\n" "--------" "---------" "------"
+        for i in "${!pods_info[@]}"; do
+            entry=(${pods_info[$i]})
+            if [ "$i" -eq "$selected_pod" ]; then
+                echo -e " \033[1;32m-> ${entry[0]} ${entry[1]} ${entry[2]}\033[0m"
+            else
+                echo "    ${entry[0]} ${entry[1]} ${entry[2]}"
+            fi
+        done
+    }
+
+    # Pod selection loop
+    while true; do
+        display_pods_menu
+        read -rsn1 input
+        case "$input" in
+            $'\x1b') # Detect ESC sequences
+                read -rsn2 -t 0.1 input
+                case "$input" in
+                    '[A') # Up arrow
+                        selected_pod=$(( (selected_pod - 1 + ${#pods_info[@]}) % ${#pods_info[@]} ))
+                        ;;
+                    '[B') # Down arrow
+                        selected_pod=$(( (selected_pod + 1) % ${#pods_info[@]} ))
+                        ;;
+                    '') # ESC key pressed alone (no sequence)
+                    exit 0
+                    ;;
+                esac
+                ;;
+            '') # Enter key
+                break
+                ;;
+        esac
+    done
+
+    # Extract selected pod and namespace
+    selected_entry=(${pods_info[$selected_pod]})
+    pod=${selected_entry[0]}
+    namespace=${selected_entry[1]}
+
+    # Execute logs command
+    kubectl logs -f "$pod" -n "$namespace"
+    exit 0
+fi
+
+# Determine the current cluster name
+current_cluster=$(kubectl config view --minify --output 'jsonpath={.contexts[0].context.cluster}')
+current_cluster_name=${current_cluster##*/}  # Extract the name after the last /
+
+
+# Set namespaces based on the cluster
+if [[ "$current_cluster_name" == "prod-cluster" ]]; then
+    namespaces=("prod-mailbox-pro" "prod-ai-mailbox" "managbl-prod" "prod-cron-jobs")
+else
+    namespaces=("dev-mailbox-pro" "dev-ai-mailbox" "managbl-dev" "managbl-cron-jobs" "monitoring")
+fi
+
+current_namespace=$(kubectl config view --minify --output 'jsonpath={..namespace}')
+selected=0
+
+# Find the index of the current namespace
+for i in "${!namespaces[@]}"; do
+    if [[ "${namespaces[$i]}" == "$current_namespace" ]]; then
+        selected=$i
+        break
+    fi
+done
+
+# Function to display the menu
+display_menu() {
+    clear
+    echo "Select a namespace using arrow keys:"
+    for i in "${!namespaces[@]}"; do
+        if [[ "${namespaces[$i]}" == "$current_namespace" ]]; then
+            # Highlight current namespace in bold yellow
+            echo -e " \033[1;33m* ${namespaces[$i]} (current)\033[0m"
+        elif [ "$i" -eq "$selected" ]; then
+            # Highlight selected namespace in bold green
+            echo -e " \033[1;32m-> ${namespaces[$i]}\033[0m"
+        else
+            echo "    ${namespaces[$i]}"
+        fi
+    done
+}
+
+# Handle arrow keys
+while true; do
+    display_menu
+    read -rsn1 input
+    case "$input" in
+        $'\x1b') # Detect ESC sequences
+            read -rsn2 -t 0.1 input
+            case "$input" in
+                '[A') # Up arrow
+                    selected=$(( (selected - 1 + ${#namespaces[@]}) % ${#namespaces[@]} ))
+                    ;;
+                '[B') # Down arrow
+                    selected=$(( (selected + 1) % ${#namespaces[@]} ))
+                    ;;
+                '') # ESC key pressed alone (no sequence)
+                    exit 0
+                    ;;
+            esac
+            ;;
+        '') # Enter key
+            break
+            ;;
+    esac
+done
+
+namespace=${namespaces[$selected]}
+
+
+selected_pod=0
+
+# Fetch pods from all namespaces
+declare -a pods_info
+
+calculate_age() {
+    # Calculate age in "<days>d:<hours>h:<minutes>m:<seconds>s" format
+    start_time=$(date -d "$1" +%s)
+    current_time=$(date +%s)
+    diff=$((current_time - start_time))
+
+    days=$((diff / 86400))
+    hours=$(( (diff % 86400) / 3600 ))
+    minutes=$(( (diff % 3600) / 60 ))
+    seconds=$((diff % 60))
+
+    echo "${days}d:${hours}h:${minutes}m:${seconds}s"
+}
+
+# Fetch pod data
+while IFS= read -r line; do
+    pod_name=$(echo "$line" | awk '{print $1}')
+    phase=$(echo "$line" | awk '{print $2}')
+    start_time=$(echo "$line" | awk '{print $3}')
+    age=$(calculate_age "$start_time")
+    pods_info+=("$(printf "%-40s %-20s %-15s %s" "$pod_name" "$namespace" "[$phase]" "$age")")
+done < <(kubectl get pods -n "$namespace" --no-headers -o custom-columns=":metadata.name,:status.phase,:metadata.creationTimestamp")
+
+
+# Function to display the pods menu
+display_pods_menu() {
+    clear
+    echo "Select a pod using arrow keys:"
+    printf "    %-40s %-20s %-15s %s\n" "Pod Name" "Namespace" "Status" "Age"
+    printf "    %-40s %-20s %-15s %s\n" "--------" "---------" "------" "---"
+    for i in "${!pods_info[@]}"; do
+        if [ "$i" -eq "$selected_pod" ]; then
+            echo -e " \033[1;32m-> ${pods_info[$i]}\033[0m"
+        else
+            echo "    ${pods_info[$i]}"
+        fi
+    done
+}
+
+# Pod selection
+while true; do
+    display_pods_menu
+    read -rsn1 input
+    case "$input" in
+        $'\x1b') # Detect ESC sequences
+            read -rsn2 -t 0.1 input
+            case "$input" in
+                '[A') # Up arrow
+                    selected_pod=$(( (selected_pod - 1 + ${#pods_info[@]}) % ${#pods_info[@]} ))
+                    ;;
+                '[B') # Down arrow
+                    selected_pod=$(( (selected_pod + 1) % ${#pods_info[@]} ))
+                    ;;
+                '') # ESC key pressed alone (no sequence)
+                    exit 0
+                    ;;
+            esac
+            ;;
+        '') # Enter key
+            break
+            ;;
+    esac
+done
+
+# Extract the selected pod and namespace
+selected_entry=${pods_info[$selected_pod]}
+pod=$(echo "$selected_entry" | awk '{print $1}')
+namespace=$(echo "$selected_entry" | awk '{print $2}')
+
+# Execute logs command
+kubectl logs -f "$pod" -n "$namespace"
